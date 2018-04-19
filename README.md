@@ -11,3 +11,15 @@ I worked with Apogee on a dataset for one client over one month. The general goa
 Our hypothesis is that content browsed by individual users provides indication of intent for our client's
 product/service. Via user clustering, what types of content show the highest intent for our client's
 product/service?
+
+
+<img src="images/website_categories_tsvd_standard_split.png">
+
+<img src="images/website_categories_tsvd_under_sample.png">
+
+
+<img src="images/Agglor_Clust_Basic_Silhouette_Under_Sampling.png">
+
+<img src="images/Agglor_Clust_L1-Average_Silhouette_Under_Sampling.png">
+
+<img src="images/Agglor_Clust_L1-Complete_Silhouette_Under_Sampling.png">
