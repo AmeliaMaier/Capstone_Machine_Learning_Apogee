@@ -31,7 +31,7 @@ There are only 137951 unique users in the month. Of those, 2975 are conversions.
 
 Due to this extream imbalance in the data and time constraints, I decided to focus on the user level data instead of attempting to improve predictions at the action level.
 
-
+<img src="images/ConversionsPerUserHistogram.png">
 
 
 ### Dimintionality Reduction
