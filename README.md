@@ -29,9 +29,13 @@ There are only 137951 unique users in the month. Of those, 2975 are conversions.
 
 <img src="images/Percent_Conversions_Unique_Users.png">
 
-Due to this extream imbalance in the data and time constraints, I decided to focus on the user level data instead of attempting to improve predictions at the action level.
+Due to this extream imbalance in the dataset and time constraints, I decided to focus on the user level data instead of attempting to improve predictions at the action level. I also looked at the distribution of total conversions across users, shown below. There is one user who 'converted' 40 times due to a sale on the client's side, which, coupled with the class imbalance, is likely to throw off an regression attempts.
 
 <img src="images/ConversionsPerUserHistogram.png">
+
+Due to the imbalances in the dataset, I also decided to use a two main undersampling techniques: 
+- While working with the diminsionality reduction and intial grouping tests: I included all the positive class data and a randomly selected sample of equal size from the negative class. Each code snipet was run multiple times to see check for result variance due to changes in the available negative class data.
+- While working on testing the affects of including clustering data in Regression and Classification: I withheld 20% of the positive class as part of the test data, oversampled the remaining positive class by 1.5 times its original size (with replacement), took a random sample from the negative class to match the size of the positive class in the training data, and added the remaining negative class samples to the testing data. This means my test data was more imbalanced than the original dataset. I did this to stress test the models due to training them on UnderOverSampled data.
 
 
 ### Dimintionality Reduction
