@@ -15,7 +15,23 @@ product/service?
 ### How To Run
 
 
+
+
 ### EDA
+
+The data I was given were all from one client for one month of activity. Each record represents an interaction between the user and the client's creative material: either the user saw, clicked on, or purchased through an ad. This means the data already has a selection bias: creative material is only shown in situations where Apogee has a reasonable belief that the user might wish to purchase something from the client. This means that any improvement above random guessing may be an improvement on Apogee's business logic. 
+
+4603 of 2069421 database records are conversion (that's 0.22% of the rows in the database). 
+
+<img src="images/Percent_Conversions_Database_Rows.png">
+
+There are only 137951 unique users in the month. Of those, 2975 are conversions. (2.15% of records are linked to at least one conversion)
+
+<img src="images/Percent_Conversions_Unique_Users.png">
+
+Due to this extream imbalance in the data and time constraints, I decided to focus on the user level data instead of attempting to improve predictions at the action level.
+
+
 
 
 ### Dimintionality Reduction
