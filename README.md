@@ -4,7 +4,7 @@
 
 ### Project Summary:
 
-I worked with Apogee on a dataset for one client over one month. The general goal was to see if I could come up with any rules they could add to their business logic to improve the conversion rate of users. (a conversion being a sale or account creation, a user being a member of the public that saw the client's ad) I worked with the team at Apogee to narrow down the scope to a specific hypothesis listed below. For security purposes, no data or data cleaning code will be included online.
+I worked with Apogee on a dataset for one client over one month. The general goal was to see if I could come up with any rules they could add to their business logic to improve the conversion rate of users. (a conversion being a sale or account creation, a user being a member of the public that saw the client's ad) I worked with the team at Apogee to narrow down the scope to a specific hypothesis listed below. For security purposes, no data or data cleaning code will be included online. Throughout the project, I tried to stick with techniques that are interpretable so I would be able to translate my results to new business rules if applicable.
 
 ### Hypothesis:
 
@@ -37,10 +37,15 @@ Due to the imbalances in the dataset, I also decided to use a two main undersamp
 - While working with the diminsionality reduction and intial grouping tests: I included all the positive class data and a randomly selected sample of equal size from the negative class. Each code snipet was run multiple times to see check for result variance due to changes in the available negative class data.
 - While working on testing the affects of including clustering data in Regression and Classification: I withheld 20% of the positive class as part of the test data, oversampled the remaining positive class by 1.5 times its original size (with replacement), took a random sample from the negative class to match the size of the positive class in the training data, and added the remaining negative class samples to the testing data. This means my test data was more imbalanced than the original dataset. I did this to stress test the models due to training them on UnderOverSampled data.
 
+### Page Categories To Predictions
+
+The initial goal is to see if the websites visited by users is correlated with their likelyhood to purchase from the client. In order to look at this at a user level, rather than a per interaction level, the pages a user has visited have to be combined in some way. I chose to try using the page catagories (provided by the company running the bids for add locations) as a pre-cleaned bag of words for each user. 
+
+<img src="images/Cat_TFIDF.png">
 
 ### Dimintionality Reduction
 
-<img src="images/website_categories_tsvd_standard_split.png">
+Using sparse matrixes, like with TFIDF, leads to higher dimintionality than is usually ideal for clustering and predictive models. I looked that dimintionality reduction options and chose TSVD because it allows for sparse matrixes and reduces in linear space, which is much easier to translate back into the original data than non-linear translations. I used a cumulative scree plot to determine about how many features I would need to use to explain at least 70% of the variance in the original data. Ideally, more variance would be included but performace further down the pipeline suffers as complexity goes up.
 
 <img src="images/website_categories_tsvd_under_sample.png">
 
