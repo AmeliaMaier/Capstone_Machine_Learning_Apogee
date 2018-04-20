@@ -9,8 +9,16 @@ I worked with Apogee on a dataset for one client over one month. The general goa
 ### Hypothesis:
 
 Our hypothesis is that content browsed by individual users provides indication of intent for our client's
-product/service. Via user clustering, what types of content show the highest intent for our client's
+product/service. 
+
+### Question:
+
+Via user clustering, what types of content show the highest intent for our client's
 product/service?
+
+### How To Run:
+
+Download the source code, find data that has a list of strings for the categories users visit and the number of times said user convered, run the main_code.py file.
 
 ### EDA
 
