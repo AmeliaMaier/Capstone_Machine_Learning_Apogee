@@ -45,17 +45,28 @@ The initial goal is to see if the websites visited by users is correlated with t
 
 ### Dimintionality Reduction
 
-Using sparse matrixes, like with TFIDF, leads to higher dimintionality than is usually ideal for clustering and predictive models. I looked that dimintionality reduction options and chose TSVD because it allows for sparse matrixes and reduces in linear space, which is much easier to translate back into the original data than non-linear translations. I used a cumulative scree plot to determine about how many features I would need to use to explain at least 70% of the variance in the original data. Ideally, more variance would be included but performace further down the pipeline suffers as complexity goes up.
+Using sparse matrixes, like with TFIDF, leads to higher dimintionality than is usually not ideal for clustering and predictive models. Many clustering and predictive models don't accept sparse matrixes due to the computations required to make them work. I looked at dimintionality reduction options and chose TSVD because it allows for sparse matrixes and reduces in linear space, which is much easier to translate back into the original data than non-linear translations. I used a cumulative scree plot to determine about how many features I would need to use to explain at least 70% of the variance in the original data. Ideally, more variance would be included but performace further down the pipeline suffers as complexity goes up.
 
 <img src="images/website_categories_tsvd_under_sample.png">
 
 ### Clustering
+
+[For a good analysis of different clustering options, check out this post.](http://hdbscan.readthedocs.io/en/latest/comparing_clustering_algorithms.html) After researching some of the options, I decided to focus on KMeans due to its scalability and the fact that it will accept a sparse matrix, if I later want to remove the dimintionality reduction from the pipeline. There are problems with KMeans when looking at a data set you aren't sure has clusters: 1) it's main parameter is the number of clusters, which is hard to know ahead of time 2) it will force all data points into clusters, even if some simply aren't part of a cluster. Some other algorithms I considered:
+- DBSCAN was my initial choice because it scales to large data and doesn't force noise into clusters however it did not perform well on the current dataset. 
+- Affinity Propagation is too slow to scale up to big data
+- MeanShift in sklearn is also slow and assigned the whole dataset to one cluster
+- Spectral Clustering has options for sparse data and reduces diminsionality, but isn't intended for this use. I looked at it in comparison to KMeans, but it wasn't able to out perform the simpler method.
+- Agglomerative Clustering does not accept sparse data but it did run relatively quickly for me, opening the possibility of scaling it up to the full dataset. None of its variety of algorithms outperformed KMeans.
+
+Because the data is in such high dimintional space, it is not possible to graph the clusters to check them. This left me with scoring options like the score in KMeans, Silhouette, and gap analyis (if a clustering set looks promising).
 
 <img src="images/Agglor_Clust_Basic_Silhouette_Under_Sampling.png">
 
 <img src="images/Agglor_Clust_L1-Average_Silhouette_Under_Sampling.png">
 
 <img src="images/Agglor_Clust_L1-Complete_Silhouette_Under_Sampling.png">
+
+Based on the KMeans score and the low Silhouette score, it is fair to guess that MeanShift and DBSCAN failed to find clusters because there probably aren't any. In order to be sure, I continued on to testing if the clusters helped with the prediction of conversions.
 
 ### Testing Hypothesis
 
