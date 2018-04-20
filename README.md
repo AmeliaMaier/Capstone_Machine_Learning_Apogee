@@ -20,7 +20,7 @@ product/service?
 
 Download the source code, find data that has a list of strings for the categories users visit and the number of times said user convered, run the main_code.py file.
 
-### EDA
+### EDA:
 
 The data I was given were all from one client for one month of activity. Each record represents an interaction between the user and the client's creative material: either the user saw, clicked on, or purchased through an ad. This means the data already has a selection bias: creative material is only shown in situations where Apogee has a reasonable belief that the user might wish to purchase something from the client. This means that any improvement above random guessing may be an improvement on Apogee's business logic. 
 
@@ -40,19 +40,19 @@ Due to the imbalances in the dataset, I also decided to use a two main undersamp
 - While working with the diminsionality reduction and intial grouping tests: I included all the positive class data and a randomly selected sample of equal size from the negative class. Each code snipet was run multiple times to see check for result variance due to changes in the available negative class data.
 - While working on testing the affects of including clustering data in Regression and Classification: I withheld 20% of the positive class as part of the test data, oversampled the remaining positive class by 1.5 times its original size (with replacement), took a random sample from the negative class to bring it to 70% of the training dataset, and added the remaining negative class samples to the testing data. This means my test data was more imbalanced than the original dataset. I did this to stress test the models due to training them on UnderOverSampled data.
 
-### Page Categories To Predictions
+### Page Categories To Predictions:
 
 The initial goal is to see if the websites visited by users is correlated with their likelyhood to purchase from the client. In order to look at this at a user level, rather than a per interaction level, the pages a user has visited have to be combined in some way. I chose to try using the page catagories (provided by the company running the bids for add locations) as a pre-cleaned bag of words for each user. 
 
 <img src="images/Cat_TFIDF.png">
 
-### Dimintionality Reduction
+### Dimintionality Reduction:
 
 Using sparse matrixes, like with TFIDF, leads to higher dimintionality than is usually not ideal for clustering and predictive models. Many clustering and predictive models don't accept sparse matrixes due to the computations required to make them work. I looked at dimintionality reduction options and chose TSVD because it allows for sparse matrixes and reduces in linear space, which is much easier to translate back into the original data than non-linear translations. I used a cumulative scree plot to determine about how many features I would need to use to explain at least 70% of the variance in the original data. Ideally, more variance would be included but performace further down the pipeline suffers as complexity goes up.
 
 <img src="images/website_categories_tsvd_under_sample.png">
 
-### Clustering
+### Clustering:
 
 [For a good analysis of different clustering options, check out this post.](http://hdbscan.readthedocs.io/en/latest/comparing_clustering_algorithms.html) After researching some of the options, I decided to focus on KMeans due to its scalability and the fact that it will accept a sparse matrix, if I later want to remove the dimintionality reduction from the pipeline. There are problems with KMeans when looking at a data set you aren't sure has clusters: 1) it's main parameter is the number of clusters, which is hard to know ahead of time 2) it will force all data points into clusters, even if some simply aren't part of a cluster. Some other algorithms I considered:
 - DBSCAN was my initial choice because it scales to large data and doesn't force noise into clusters however it did not perform well on the current dataset. 
@@ -75,7 +75,7 @@ Because the data is in such high dimintional space, it is not possible to graph 
 
 Based on the KMeans score and the low Silhouette score, it is fair to guess that MeanShift and DBSCAN failed to find clusters because there probably aren't any. In order to be sure, I continued on to testing if the clusters helped with the prediction of conversions.
 
-### Testing Hypothesis
+### Testing Hypothesis:
 
 I ran a RandomForestClassifier model with the vectorized categories per person as the dataset and convered/not convered as the target. I then added the KMeans cluster assignment to the dataset and refit the model. Below are the F1 and Recall scores across 5 fit/test iterations, UnderOverSampling each time so the model saw slightly different data. The results are consistent across the 5 runs, having good scores for training, slightly lower for the full data set and significanlty lower for the training set the model wasn't allowed to see at all.
 
@@ -85,11 +85,11 @@ I ran a RandomForestClassifier model with the vectorized categories per person a
 
 While the models are better than random guessing, the addition of the clusters does not help and the model's ability to predict purchases on entirly unseen data is not much better than a guess.
 
-### Results
+### Results:
 
 At this time, I do not see any business value in adding clustering of a customer's website categories to Apogee's decision making process. 
 
-### Next Steps
+### Next Steps:
 
 - Add the timing information into the data. Right now, all categories are being treated the same regardless of when they were visted.
 - Scraping additional data from websites visited by users who convered vs ones who didn't to see if there is additional useful information in the meta data not obviouse in the categories provided by the third party.
