@@ -60,11 +60,15 @@ Using sparse matrixes, like with TFIDF, leads to higher dimintionality than is u
 
 Because the data is in such high dimintional space, it is not possible to graph the clusters to check them. This left me with scoring options like the score in KMeans, Silhouette, and gap analyis (if a clustering set looks promising).
 
-<img src="images/Agglor_Clust_Basic_Silhouette_Under_Sampling.png">
+<img src="images/SilhouetteScore_acrossClusteringOptions.png">
 
-<img src="images/Agglor_Clust_L1-Average_Silhouette_Under_Sampling.png">
+<img src="images/SilhouetteScoreVariance_acrossClusteringOptions.png">
 
-<img src="images/Agglor_Clust_L1-Complete_Silhouette_Under_Sampling.png">
+<img src="images/kmeans_1-500_bothscores.png">
+
+<img src="images/kmeans_25-50_sscore.png">
+
+ <img src="images/kmeans_customerConversionsinClusters.png">
 
 Based on the KMeans score and the low Silhouette score, it is fair to guess that MeanShift and DBSCAN failed to find clusters because there probably aren't any. In order to be sure, I continued on to testing if the clusters helped with the prediction of conversions.
 
