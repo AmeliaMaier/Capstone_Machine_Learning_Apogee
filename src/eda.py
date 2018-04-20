@@ -13,14 +13,19 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.pipeline import Pipeline
 from mpl_toolkits.mplot3d import Axes3D
 from sklearn.manifold import MDS
-from sklearn.cluster import AgglomerativeClustering, KMeans, DBSCAN, SpectralClustering
+from sklearn.cluster import AgglomerativeClustering, KMeans, DBSCAN, SpectralClustering, MeanShift
 from seaborn import violinplot
 from sklearn.metrics import silhouette_samples, silhouette_score, recall_score, mean_squared_error, f1_score
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.model_selection import cross_validate
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.externals.six import StringIO
+from IPython.display import Image
+from sklearn.tree import export_graphviz
+import pydotplus
 
 
-def under_sample_binary_0_G0(x, y, test_reserve=.2, oversample=1.5):
+def under_sample_binary_0_G0(x, y, test_reserve=.2, oversample=1.5, majority_percent=.5, x_part2 = None):
     '''
     undersamples based on y <= 0 and y > 0 as binary options
     will reserve test_reserve portion from minority class
@@ -35,9 +40,10 @@ def under_sample_binary_0_G0(x, y, test_reserve=.2, oversample=1.5):
         minority_test_idxs = np.random.choice(y_G0_idxs, round(len(y_G0_idxs)*test_reserve), replace=False)
         minority_idxs = np.setdiff1d(y_G0_idxs, minority_test_idxs)
         minority_idxs = np.random.choice(minority_idxs, round(len(y_G0_idxs)*oversample), replace=True)
-        majority_idxs = np.random.choice(y_0_idxs, len(minority_idxs), replace=False)
+        majority_idxs = np.random.choice(y_0_idxs, round((len(minority_idxs)/(1-majority_percent))*majority_percent), replace=False)
         majority_test_idxs = np.setdiff1d(y_0_idxs, majority_idxs)
     elif len(y_0_idxs) == len(y_G0_idxs):
+        print('the classes started balanced')
         minority_test_idxs = np.random.choice(y_G0_idxs, round(len(y_G0_idxs)*test_reserve), replace=False)
         minority_idxs = np.setdiff1d(y_G0_idxs, minority_test_idxs)
         minority_idxs = np.random.choice(minority_idxs, round(len(y_G0_idxs)*oversample), replace=True)
@@ -48,7 +54,7 @@ def under_sample_binary_0_G0(x, y, test_reserve=.2, oversample=1.5):
         minority_test_idxs = np.random.choice(y_0_idxs, round(len(y_0_idxs)*test_reserve), replace=False)
         minority_idxs = np.setdiff1d(y_0_idxs, minority_test_idxs)
         minority_idxs = np.random.choice(minority_idxs, round(len(y_0_idxs)*oversample), replace=True)
-        majority_idxs = np.random.choice(y_G0_idxs, len(minority_idxs), replace=False)
+        majority_idxs = np.random.choice(y_G0_idxs, round((len(minority_idxs)/(1-majority_percent))*majority_percent), replace=False)
         majority_test_idxs = np.setdiff1d(y_G0_idxs, majority_idxs)
     train_idx = np.concatenate((minority_idxs, majority_idxs), axis=0)
     test_idx = np.concatenate((minority_test_idxs, majority_test_idxs), axis=0)
@@ -56,10 +62,125 @@ def under_sample_binary_0_G0(x, y, test_reserve=.2, oversample=1.5):
     y_train = y[train_idx]
     x_test = x[test_idx]
     y_test = y[test_idx]
-    return x_train, x_test, y_train, y_test
+    if x_part2 is None:
+        return x_train, x_test, y_train, y_test
+    else:
+        return x_train, x_test, x_part2[train_idx], x_part2[test_idx], y_train, y_test
+
+
+def print_tree(dtree):
+    dot_data = StringIO()
+    export_graphviz(dtree, out_file=dot_data,
+                    filled=True, rounded=True,
+                    special_characters=True)
+
+    graph = pydotplus.graph_from_dot_data(dot_data.getvalue())
+    Image(graph.create_png())
+
+def decision_tree(x_train, x_test, y_train, y_test, x, y, description=''):
+    dt = DecisionTreeClassifier()
+    scores = cross_validate(estimator=dt, X=x_train, y=y_train, scoring='recall', n_jobs=-1)
+    f1scores = cross_validate(estimator=dt, X=x_train, y=y_train, scoring='f1', n_jobs=-1)
+    print(f'DecisionTreeClassifier F1 Train, {description}: {f1scores["test_score"]}')
+    print(f'DecisionTreeClassifier Recall Train, {description}: {scores["test_score"]}')
+    dt.fit(x_train, y_train)
+    y_pred = dt.predict(x_test)
+    print(f'DecisionTreeClassifier F1 Test, {description}: {f1_score(y_test, y_pred)}')
+    print(f'DecisionTreeClassifier Recall Test, {description}: {recall_score(y_test, y_pred)}')
+    y_pred = dt.predict(x)
+    print(f'DecisionTreeClassifier F1 Full, {description}: {f1_score(y, y_pred)}')
+    print(f'DecisionTreeClassifier Recall Full, {description}: {recall_score(y, y_pred)}')
+    #print_tree(dt)
+
+def random_forest(x_train, x_test, y_train, y_test, x, y, description=''):
+    rfc = RandomForestClassifier(n_estimators=350, n_jobs=-1)
+    scores = cross_validate(estimator=rfc, X=x_train, y=y_train, scoring='recall', n_jobs=-1)
+    f1scores = cross_validate(estimator=rfc, X=x_train, y=y_train, scoring='f1', n_jobs=-1)
+    print(f'RandomForestClassifier F1 Train, just profile: {f1scores["test_score"]}')
+    print(f'RandomForestClassifier Recall Train, just profile: {scores["test_score"]}')
+    rfc.fit(x_train, y_train)
+    y_pred = rfc.predict(x_test)
+    print(f'RandomForestClassifier F1 Test, just profile: {f1_score(y_test, y_pred)}')
+    print(f'RandomForestClassifier Recall Test, just profile: {recall_score(y_test, y_pred)}')
+    y_pred = rfc.predict(x)
+    print(f'RandomForestClassifier F1 Full, just profile: {f1_score(y, y_pred)}')
+    print(f'RandomForestClassifier Recall Full, just profile: {recall_score(y, y_pred)}')
+
+
+def stripped_down_w_wo_clusters(user_profile, bag_of_words, y, vocab):
+
+    x = user_profile
+
+    for run in range(5):
+        #undersample split to compare with standard
+        x_train, x_test, words_train, words_test, y_train, y_test = under_sample_binary_0_G0(x, y, test_reserve=.2, majority_percent=.7, oversample=1.5, x_part2=bag_of_words)
+        print(f'round: {run}')
+
+        decision_tree(x_train, x_test, y_train, y_test, x, y, 'just profile')
+        random_forest(x_train, x_test, y_train, y_test, x, y, 'just profile')
+
+        tfidf_pipe = Pipeline([
+        ('vect', CountVectorizer(vocabulary=vocab))
+        ])
+        word_vecs_train = tfidf_pipe.fit_transform(words_train)
+        word_vecs_test = tfidf_pipe.transform(words_test)
+        word_vecs_full = tfidf_pipe.transform(bag_of_words)
+        x_train_tran = hstack([x_train, word_vecs_train])
+        x_test_tran = hstack([x_test, word_vecs_test])
+        x_full_tran = hstack([x, word_vecs_full])
+
+        decision_tree(x_train_tran, x_test_tran, y_train, y_test, x_full_tran, y, 'with word vecs')
+        random_forest(x_train_tran, x_test_tran, y_train, y_test, x_full_tran, y, 'with word vecs')
+
+        tfidf_pipe = Pipeline([
+        ('vect', CountVectorizer(vocabulary=vocab)),
+        ('tfidf', TfidfTransformer())
+        ])
+        word_vecs_train = tfidf_pipe.fit_transform(words_train)
+        word_vecs_test = tfidf_pipe.transform(words_test)
+        word_vecs_full = tfidf_pipe.transform(bag_of_words)
+        x_train_tran = hstack([x_train, word_vecs_train])
+        x_test_tran = hstack([x_test, word_vecs_test])
+        x_full_tran = hstack([x, word_vecs_full])
+
+        decision_tree(x_train_tran, x_test_tran, y_train, y_test, x_full_tran, y, 'with tfidf vecs')
+        random_forest(x_train_tran, x_test_tran, y_train, y_test, x_full_tran, y, 'with tfidf vecs')
+
+        tfidf_pipe = Pipeline([
+        ('vect', CountVectorizer(vocabulary=vocab)),
+        ('tfidf', TfidfTransformer()),
+        ('tsvd', TruncatedSVD(n_components=150))
+        ])
+        word_vecs_train = tfidf_pipe.fit_transform(words_train)
+        word_vecs_test = tfidf_pipe.transform(words_test)
+        word_vecs_full = tfidf_pipe.transform(bag_of_words)
+        x_train_tran = hstack([x_train, word_vecs_train])
+        x_test_tran = hstack([x_test, word_vecs_test])
+        x_full_tran = hstack([x, word_vecs_full])
+
+        decision_tree(x_train_tran, x_test_tran, y_train, y_test, x_full_tran, y, 'with tfidf tsvd')
+        random_forest(x_train_tran, x_test_tran, y_train, y_test, x_full_tran, y, 'with tfidf tsvd')
+
+        for num in range(2,100, 2):
+            tfidf_pipe = Pipeline([
+            ('vect', CountVectorizer(vocabulary=vocab)),
+            ('cluster', KMeans(n_clusters=num, n_init=50, max_iter=250, n_jobs=-1))
+            ])
+            word_vecs_train = tfidf_pipe.fit_predict(words_train)
+            word_vecs_test = tfidf_pipe.predict(words_test)
+            word_vecs_full = tfidf_pipe.predict(bag_of_words)
+            x_train_tran = hstack([x_train, word_vecs_train])
+            x_test_tran = hstack([x_test, word_vecs_test])
+            x_full_tran = hstack([x, word_vecs_full])
+
+            decision_tree(x_train_tran, x_test_tran, y_train, y_test, x_full_tran, y, f'with {num} cluster on word vec')
+            random_forest(x_train_tran, x_test_tran, y_train, y_test, x_full_tran, y, f'with {num} cluster on word vec')
+
+
+
 
 def random_forest_w_wo_clusters(x,y):
-		
+
 	rfr_score = []
 	rfr_model = []
 	rfc_score = []
@@ -237,103 +358,91 @@ def random_forest_w_wo_clusters(x,y):
 	plt.title('RandomForestClassifier Scores\nTrain and Test\nWith and Without KMeans Clustering')
 	plt.legend()
 	plt.show()
-def best_clustering(x,y):
 
-	n_components=150
+def best_clustering(x,y, vocab):
 
-	tfidf_pipe = Pipeline([
-	    ('vect', CountVectorizer(vocabulary=vocab)),
-	    ('tfidf', TfidfTransformer()),
-	    ('tsvd', TruncatedSVD(n_components=n_components)),
-	])
-	# tfidf_pipe.fit(x_train)
-	# x_train = tfidf_pipe.transform(x_train)
-	# cum_scree_plot(tfidf_pipe.named_steps['tsvd'], n_components, title="Website Categories TSVD\nStandard Split")
-	#
-	# tfidf_pipe.fit(x_under)
-	# x_under = tfidf_pipe.transform(x_under)
-	#cum_scree_plot(tfidf_pipe.named_steps['tsvd'], n_components, title="Website Categories TSVD\nUnder Sampling")
+    tfidf_pipe = Pipeline([
+        ('vect', CountVectorizer(vocabulary=vocab))
+    ])
+    # tfidf_pipe.fit(x_train)
+    # x_train = tfidf_pipe.transform(x_train)
+    # cum_scree_plot(tfidf_pipe.named_steps['tsvd'], n_components, title="Website Categories TSVD\nStandard Split")
+    #
+    # tfidf_pipe.fit(x_under)
+    # x_under = tfidf_pipe.transform(x_under)
+    #cum_scree_plot(tfidf_pipe.named_steps['tsvd'], n_components, title="Website Categories TSVD\nUnder Sampling")
 
-	'''The best value is 1 and the worst value is -1. Values near 0 indicate overlapping clusters. Negative values generally indicate that a sample has been assigned to the wrong cluster, as a different cluster is more similar.'''
+    '''The best value is 1 and the worst value is -1. Values near 0 indicate overlapping clusters. Negative values generally indicate that a sample has been assigned to the wrong cluster, as a different cluster is more similar.'''
 
-	silhouette_scores_a_average = []
-	silhouette_scores_k_average = []
-	silhouette_scores_s_average = []
-	silhouette_scores_d_average = []
-	predication_average_var_k = []
-	predication_average_var_a = []
-	predication_average_var_s = []
-	predication_average_var_d = []
-	for n_clusters in range(2, 500, 2):
-	    silhouette_scores_a = []
-	    silhouette_scores_k = []
-	    silhouette_scores_s = []
-	    silhouette_scores_d = []
-	    for run in range(5):
-		x_train, x_test, y_train, y_test = under_sample_binary_0_G0(x, y)
-		x_train = tfidf_pipe.fit_transform(x_train)
+    silhouette_scores_a_average = []
+    silhouette_scores_k_average = []
+    silhouette_scores_s_average = []
+    silhouette_scores_d_average = []
+    predication_average_var_k = []
+    predication_average_var_a = []
+    predication_average_var_s = []
+    predication_average_var_d = []
+    for n_clusters in range(2, 100, 2):
+        silhouette_scores_a = []
+        silhouette_scores_k = []
+        silhouette_scores_s = []
+        silhouette_scores_d = []
+        for run in range(5):
+            x_train, x_test, y_train, y_test = under_sample_binary_0_G0(x, y, test_reserve=.2, oversample=1, majority_percent=.7)
+            x_train = tfidf_pipe.fit_transform(x_train)
 
-		cluster_ward = AgglomerativeClustering(n_clusters=n_clusters)
-		cluster_a = cluster_ward.fit_predict(x_train)
+            # cluster_ward = AgglomerativeClustering(n_clusters=n_clusters)
+            # cluster_a = cluster_ward.fit_predict(x_train.toarray())
 
-		cluster_kmeans = KMeans(n_clusters=n_clusters, n_init=50, max_iter=500, n_jobs=-1)
-		cluster_k = cluster_kmeans.fit_predict(x_train)
+            cluster_kmeans = KMeans(n_clusters=n_clusters, n_init=50, max_iter=500, n_jobs=-1)
+            cluster_k = cluster_kmeans.fit_predict(x_train)
+            #
+            # cluster_spectral = SpectralClustering(n_clusters=n_clusters) #using look for n_clusters to also loop through diminstions in spectral
+            # cluster_s = cluster_spectral.fit_predict(x_train)
 
-		cluster_spectral = SpectralClustering(n_clusters=n_clusters) #using look for n_clusters to also loop through diminstions in spectral
-		cluster_s = cluster_spectral.fit_predict(x_train)
+            cluster_dbscan = DBSCAN(eps=(np.log(n_clusters)/50))#using look for n_clusters to also loop through eps in dbscan
+            cluster_d = cluster_dbscan.fit_predict(x_train)
 
-		cluster_dbscan = DBSCAN(eps=(np.log(n_clusters)/50))#using look for n_clusters to also loop through eps in dbscan
-		cluster_d = cluster_dbscan.fit_predict(x_train)
+            # silhouette_scores_a.append(silhouette_score(x_train, cluster_a))
+            silhouette_scores_k.append(silhouette_score(x_train, cluster_k))
+            # silhouette_scores_s.append(silhouette_score(x_train, cluster_s))
+            silhouette_scores_d.append(silhouette_score(x_train, cluster_d))
+            print(f'run: {run}')
+        predication_average_var_k.append(np.var(silhouette_scores_k))
+        # predication_average_var_a.append(np.var(silhouette_scores_a))
+        # predication_average_var_s.append(np.var(silhouette_scores_s))
+        predication_average_var_d.append(np.var(silhouette_scores_d))
 
-		silhouette_scores_a.append(silhouette_score(x_train, cluster_a))
-		silhouette_scores_k.append(silhouette_score(x_train, cluster_k))
-		silhouette_scores_s.append(silhouette_score(x_train, cluster_s))
-		silhouette_scores_d.append(silhouette_score(x_train, cluster_d))
+        # silhouette_scores_a_average.append(np.mean(silhouette_scores_a))
+        silhouette_scores_k_average.append(np.mean(silhouette_scores_k))
+        # silhouette_scores_s_average.append(np.mean(silhouette_scores_s))
+        silhouette_scores_d_average.append(np.mean(silhouette_scores_d))
+        print(f'cluster: {n_clusters}')
+        print(predication_average_var_k, predication_average_var_d)
+        print(silhouette_scores_k_average , silhouette_scores_d_average)
+    print('complete')
+    print('\n')
+    print(silhouette_scores_k_average)
+    print('\n')
+    print(predication_average_var_k)
+    print('\n')
+    print('\n')
+    print(silhouette_scores_d_average)
+    print('\n')
+    print(predication_average_var_d)
 
-		print(f'run: {run}')
-	    predication_average_var_k.append(np.var(silhouette_scores_k))
-	    predication_average_var_a.append(np.var(silhouette_scores_a))
-	    predication_average_var_s.append(np.var(silhouette_scores_s))
-	    predication_average_var_d.append(np.var(silhouette_scores_d))
-
-	    silhouette_scores_a_average.append(np.mean(silhouette_scores_a))
-	    silhouette_scores_k_average.append(np.mean(silhouette_scores_k))
-	    silhouette_scores_s_average.append(np.mean(silhouette_scores_s))
-	    silhouette_scores_d_average.append(np.mean(silhouette_scores_d))
-	    print(f'cluster: {n_clusters}')
-
-	print(silhouette_scores_a_average)
-	print('\n')
-	print(silhouette_scores_k_average)
-	print('\n')
-	print(predication_average_var_k)
-	print('\n')
-	print(predication_average_var_a)
-	print('\n')
-	print(silhouette_scores_s_average)
-	print('\n')
-	print(predication_average_var_s)
-	print('\n')
-	print(silhouette_scores_d_average)
-	print('\n')
-	print(predication_average_var_d)
-
-	plt.plot(range(2,500,2), silhouette_scores_a_average, c='darkorange', label='Agglomerative Average Silhouette Score')
-	plt.plot(range(2,500,2), silhouette_scores_k_average, c='palegreen', label='KMeans Average Silhouette Score')
-	plt.plot(range(2,500,2), silhouette_scores_s_average, c='goldenrod', label='Spectral Average Silhouette Score')
-	plt.plot(range(2,500,2), silhouette_scores_d_average, c='skyblue', label='DBSCAN Average Silhouette Score')
-	plt.title('Clustering Scores - Basic\nAverage Silhouette Score\nOver 100 Bootstrapped UnderOver Samples')
-	plt.legend()
-	plt.show()
+    plt.plot(range(2,100,2), silhouette_scores_k_average, c='palegreen', label='KMeans Average Silhouette Score')
+    plt.plot(range(2,100,2), silhouette_scores_d_average, c='skyblue', label='DBSCAN Average Silhouette Score')
+    plt.title('Clustering Scores - Basic\nAverage Silhouette Score\nOver 100 Bootstrapped UnderOver Samples')
+    plt.legend()
+    plt.show()
 
 
-	plt.plot(range(2,500), predication_average_var_k, c='deepskyblue', label='KMeans Average Silhouette Variance')
-	plt.plot(range(2,500), predication_average_var_a, c='lightcoral', label='Agglomerative Average Silhouette Variance')
-	plt.plot(range(2,500), predication_average_var_s, c='gold', label='Spectral Average Silhouette Variance')
-	plt.plot(range(2,500), predication_average_var_d, c='powderblue', label='DBSCAN Average Silhouette Variance')
-	plt.title('Clustering Scores - Basic\nAverage Silhouette Variance\nOver 100 Bootstrapped UnderOver Samples')
-	plt.legend()
-	plt.show()
+    plt.plot(range(2,100,2), predication_average_var_k, c='deepskyblue', label='KMeans Average Silhouette Variance')
+    plt.plot(range(2,100,2), predication_average_var_d, c='powderblue', label='DBSCAN Average Silhouette Variance')
+    plt.title('Clustering Scores - Basic\nAverage Silhouette Variance\nOver 100 Bootstrapped UnderOver Samples')
+    plt.legend()
+    plt.show()
 
 
 def cum_scree_plot(tsvd, num_components, title=None):
@@ -367,6 +476,48 @@ def cum_scree_plot(tsvd, num_components, title=None):
         plt.title(title, fontsize=16)
     plt.show()
 
+def single_cluster_model_sil(x, y, vocab):
+    n_components=150
+    silhouette_scores=[]
+    kmeans_scores=[]
+    for num in range(25):
+        print(num)
+        x_train, x_test, y_train, y_test = under_sample_binary_0_G0(x, y, test_reserve=.2, oversample=1, majority_percent=.5)
+        tfidf_pipe = Pipeline([
+        ('vect', CountVectorizer(vocabulary=vocab)),
+        ('tfidf', TfidfTransformer()),
+        ('tsvd', TruncatedSVD(n_components=n_components))
+        ])
+        x_tran = tfidf_pipe.fit_transform(x_train)
+        kmn = MeanShift(n_jobs=-1)
+        clusters = kmn.fit_predict(x_tran)
+        silhouette_scores.append(silhouette_score(x_tran, clusters))
+        print(silhouette_scores[-1])
+        #kmeans_scores.append(kmn.score(x_tran))
+    plt.plot(range(25), silhouette_scores, c='palegreen', label='Silhouette Score')
+    #plt.plot(range(2,500), kmeans_scores, c='violet', label='KMeans Score')
+    plt.title('MeanShift Clustering\nScores Across Cluster Counts')
+    plt.legend(loc=0)
+    plt.show()
+
+def evaluate_clusters(x, y, vocab, n_clusters):
+    x_train, x_test, y_train, y_test = under_sample_binary_0_G0(x, y, test_reserve=.2, oversample=1.5, majority_percent=.7)
+    tfidf_pipe = Pipeline([
+    ('vect', CountVectorizer(vocabulary=vocab)),
+    ('tfidf', TfidfTransformer()),
+    ('tsvd', TruncatedSVD(n_components=150)),
+    ('cluster', KMeans(n_clusters=n_clusters, n_init=50, max_iter=250, n_jobs=-1))
+    ])
+    clusters = tfidf_pipe.fit_predict(x_train)
+
+    plt.scatter(clusters, y_train, c=y_train, cmap='cool')
+    plt.title('Customer Conversion Across Clusters')
+    plt.show()
+    violinplot(x=clusters, y=y_train)
+    plt.title('Customer Conversion Across Clusters')
+    plt.show()
+
+
 def tsne_3d_scatter(x, y, title=None):
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
@@ -378,14 +529,23 @@ def tsne_3d_scatter(x, y, title=None):
         plt.title(title, fontsize=16)
     plt.show()
 
+
+# user_profile = np.load('data/user_profile_modes_array_dummies')
 x = np.load('data/x_array.npy')
 y = np.load('data/y_array.npy')
 vocab = pd.read_csv('data/cat_to_num.csv', usecols=['ID']).values.astype(str)
 vocab = vocab[:,0].tolist()
 
-y_raw = y.copy()
 y = np.where(y > 0, 1, 0)
 
+evaluate_clusters(x, y, vocab, 50)
+single_cluster_model_sil(x, y, vocab)
+
+
+
+#stripped_down_w_wo_clusters(user_profile, x, y, vocab)
+
+# best_clustering(x,y, vocab)
 
 #standard train test split to cut the data in half
 # x_train, x_test, y_train, y_test = train_test_split(x,y,test_size=.5)
@@ -422,12 +582,3 @@ y = np.where(y > 0, 1, 0)
         # plt.title("Regression and Classification Scores\nCategory Counts For Browsing Behavior\nWithout Clustering")
         # plt.legend()
         # plt.show()
-
-
-
-
-#
-# plt.scatter(cluster_under, y_under, c=y_under, cmap='cool')
-# plt.show()
-# violinplot(x=cluster_under, y=y_under)
-# plt.show()
