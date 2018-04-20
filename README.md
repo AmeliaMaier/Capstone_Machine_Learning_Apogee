@@ -12,11 +12,6 @@ Our hypothesis is that content browsed by individual users provides indication o
 product/service. Via user clustering, what types of content show the highest intent for our client's
 product/service?
 
-### How To Run
-
-
-
-
 ### EDA
 
 The data I was given were all from one client for one month of activity. Each record represents an interaction between the user and the client's creative material: either the user saw, clicked on, or purchased through an ad. This means the data already has a selection bias: creative material is only shown in situations where Apogee has a reasonable belief that the user might wish to purchase something from the client. This means that any improvement above random guessing may be an improvement on Apogee's business logic. 
@@ -68,14 +63,26 @@ Because the data is in such high dimintional space, it is not possible to graph 
 
 <img src="images/kmeans_25-50_sscore.png">
 
- <img src="images/kmeans_customerConversionsinClusters.png">
+<img src="images/kmeans_customerConversionsinClusters.png">
 
 Based on the KMeans score and the low Silhouette score, it is fair to guess that MeanShift and DBSCAN failed to find clusters because there probably aren't any. In order to be sure, I continued on to testing if the clusters helped with the prediction of conversions.
 
 ### Testing Hypothesis
 
+I ran a RandomForestClassifier model with the vectorized categories per person as the dataset and convered/not convered as the target. I then added the KMeans cluster assignment to the dataset and refit the model. Below are the F1 and Recall scores across 5 fit/test iterations, UnderOverSampling each time so the model saw slightly different data. The results are consistent across the 5 runs, having good scores for training, slightly lower for the full data set and significanlty lower for the training set the model wasn't allowed to see at all.
+
+<img src="images/RandomForestClass_F1_70-30.png">
+
+<img src="images/RandomForestClass_Recall_70-30.png">
+
+While the models are better than random guessing, the addition of the clusters does not help and the model's ability to predict purchases on entirly unseen data is not much better than a guess.
 
 ### Results
 
+At this time, I do not see any business value in adding clustering of a customer's website categories to Apogee's decision making process. 
 
 ### Next Steps
+
+- Add the timing information into the data. Right now, all categories are being treated the same regardless of when they were visted.
+- Scraping additional data from websites visited by users who convered vs ones who didn't to see if there is additional useful information in the meta data not obviouse in the categories provided by the third party.
+- Continued research into work by other groups similar to [this](https://link.springer.com/chapter/10.1007/978-3-319-19548-3_11).
