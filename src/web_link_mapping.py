@@ -17,7 +17,8 @@ session.mount('http://', adapter)
 '''
 sudo code for planning web link scraping:
     pull list of urls (starting points)
-    multi-process across urls
+    multi-process across starting urls (width)
+    multi-thread across processes (depth)
         per url:
             set depth to 1 at beginning, have maxdepth set to default
             get_links(url, depth)
@@ -30,7 +31,7 @@ sudo code for planning web link scraping:
                 if depth >= max depth, return
                 for link in list of links:
                     get_links(link, depth)
-
+start with 2 starting urls and max depth 5 just to get idea of how long it will take and test code
 '''
 
 
