@@ -13,6 +13,30 @@ adapter = requests.adapters.HTTPAdapter(max_retries=MAX_RETRIES)
 session.mount('https://', adapter)
 session.mount('http://', adapter)
 
+
+'''
+sudo code for planning web link scraping:
+    pull list of urls (starting points)
+    multi-process across urls
+        per url:
+            set depth to 1 at beginning, have maxdepth set to default
+            get_links(url, depth)
+                if url in website_links table from_url_ID column, return
+                if url in starter list and depth != 1, return
+                get html from url
+                get list of links
+                write out to db tables(urls and website_links)
+                depth +1
+                if depth >= max depth, return
+                for link in list of links:
+                    get_links(link, depth)
+
+'''
+
+
+
+
+
 def create_unique_urls_list():
     columns = ['DBM_URL']
 
