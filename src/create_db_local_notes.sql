@@ -11,7 +11,7 @@ $ psql website_link_mapping
 	site_description VARCHAR DEFAULT 'not_available',
 	date_scraped TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 	html_raw VARCHAR,
-	linked BOOLEAN
+	linked BOOLEAN DEFAULT False
 	);
 	CREATE TABLE website_links (
 	from_url_ID INTEGER NOT NULL REFERENCES urls(url_id),
