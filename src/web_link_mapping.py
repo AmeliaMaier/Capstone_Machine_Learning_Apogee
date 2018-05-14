@@ -27,8 +27,32 @@ session.mount('https://', adapter)
 session.mount('http://', adapter)
 failed_urls = []
 
-#create list of all urls
-urls_starting_points = pickle.load(open( "data/url_series.p", "rb" ))
+
+def create_unique_urls_list():
+    columns = ['DBM_URL']
+
+    activity_df = pd.read_csv('data/activity_dsi_april.csv', dtype=str, usecols=columns, squeeze=True, skip_blank_lines=True)
+    activity = activity_df.fillna('https://9gag.com/').unique()
+    activity = activity.tolist()
+    click_df = pd.read_csv('data/click_dsi_april.csv', usecols=columns, dtype=str, squeeze=True, skip_blank_lines=True)
+    click = click_df.fillna('https://9gag.com/').unique()
+    click = click.tolist()
+    imp0_df = pd.read_csv('data/impressions_dsi_april-000000000000.csv', usecols=columns, dtype=str, squeeze=True, skip_blank_lines=True)
+    imp0 = imp0_df.fillna('https://9gag.com/').unique()
+    imp0 = imp0.tolist()
+    imp1_df = pd.read_csv('data/impressions_dsi_april-000000000001.csv', usecols=columns, dtype=str, squeeze=True, skip_blank_lines=True)
+    imp1 = imp1_df.fillna('https://9gag.com/').unique()
+    imp1 = imp1.tolist()
+    imp2_df = pd.read_csv('data/impressions_dsi_april-000000000002.csv', usecols=columns, dtype=str, squeeze=True, skip_blank_lines=True)
+    imp2 = imp2_df.fillna('https://9gag.com/').unique()
+    imp2 = imp2.tolist()
+    imp3_df = pd.read_csv('data/impressions_dsi_april-000000000003.csv', usecols=columns, dtype=str, squeeze=True, skip_blank_lines=True)
+    imp3 = imp3_df.fillna('https://9gag.com/').unique()
+    imp3 = imp3.tolist()
+
+    urls_series = activity + click + imp0 + imp1 + imp2 + imp3
+    urls_series = set(urls_series)
+    pickle.dump(urls_series, open( "data/url_series.p", "wb" ) )
 
 
 def get_url_html(url):
@@ -92,6 +116,41 @@ def get_description(html_page):
     except:
         return 'not_available'
     return desc[0]
+
+def check_url_already_seen(url):
+    conn = psycopg2.connect(dbname='website_link_mapping', user=psql_user, password=psql_password, host='localhost')
+    c = conn.cursor()
+    match_count = 0
+    sql_statement = '''
+    SELECT COUNT(*) FROM urls
+        WHERE urls.url_raw = %(url_raw)s
+        AND urls.linked = %(linked)s;
+    '''
+    var_dict = {'url_raw':url, 'linked': True}
+    c.execute(sql_statement, var_dict)
+    match_count = c.fetchall()
+    conn.commit()
+    conn.close()
+    return (match_count[0][0] > 0)
+
+def bulk_check_url_already_seen():
+    '''
+    had to stop the initial load early, used this to cut down on the urls sent to threading
+    '''
+    conn = psycopg2.connect(dbname='website_link_mapping', user=psql_user, password=psql_password, host='localhost')
+    c = conn.cursor()
+    match_count = 0
+    sql_statement = '''
+    SELECT url_raw FROM urls
+        WHERE urls.linked = %(linked)s;
+    '''
+    var_dict = {'linked': True}
+    c.execute(sql_statement, var_dict)
+    seen = c.fetchall()
+    seen = set([x[0] for x in seen])
+    conn.commit()
+    conn.close()
+    return seen
 
 def write_to_tables(url, links, root, html_page):
     # engine = create_engine(f'postgresql+psycopg2://{psql_user}:{psql_password}@localhost:5432/website_link_mapping',echo=False)
@@ -186,25 +245,40 @@ def get_url_layer():
 def initial_load_depth_one(urls_starting_points, limit=None):
     #initial load that will do depth of 1
     count = 0
-    for series in urls_starting_points: #each series contains unique urls from an different csv
-        for url in series: # loops through the urls from one csv
-            count += 1
-            html_page = get_url_html(url)
-            if html_page is None:
-                root = 'not_available'
-                links = []
-                html_page = 'not_available'
-            else:
-                root, links = resolve_links(get_links(html_page))
-            if len(links) < 1:
-                print(f'no links found, url: {url}')
-            write_to_tables(url, links, root, html_page)
-            if not count is None and count >= limit:
-                break
-        if not count is None:
-            break
+    if not count is None:
+        urls_starting_points = urls_starting_points[:limit]
+    for url in urls_starting_points: #list of urls
+        if check_url_already_seen(url):
+            print(f'url already linked, skipped: {url}')
+            continue #the url has already been linked and doesn't need to be looked at again
+        count += 1
+        html_page = get_url_html(url)
+        if html_page is None:
+            root = 'not_available'
+            links = []
+            html_page = 'not_available'
+        else:
+            root, links = resolve_links(get_links(html_page))
+        if len(links) < 1:
+            print(f'no links found, url: {url}')
+        write_to_tables(url, links, root, html_page)
+
+
+def initial_load_threaded(urls_starting_points, limit=None):
+    print(f'starting initial load')
+    if not limit is None:
+        urls_starting_points = urls_starting_points[:limit]
+    print(f'urls in intial load {len(urls_starting_points)}')
+    pool = ThreadPool(min(50, len(urls_starting_points)))
+    pool.map(pooled_url_to_db, urls_starting_points)
+    pool.close()
+    pool.join()
+    print(f'ending initial load')
 
 def pooled_url_to_db(url):
+    if check_url_already_seen(url):
+        logging.warning(f'url already linked, skipped. {url}')
+        return
     html_page = get_url_html(url)
     if html_page is None:
         root = 'not_available'
@@ -237,6 +311,8 @@ def crawl(depth=5, limit=None):
             urls = urls[:limit]
         print(f'urls in layer {len(urls)}')
         for url in urls: # loops through the urls from one csv
+            if check_url_already_seen(url):
+                continue #the url has already been linked and doesn't need to be looked at again
             html_page = get_url_html(url)
             if html_page is None:
                 root = 'not_available'
@@ -249,10 +325,24 @@ def crawl(depth=5, limit=None):
             write_to_tables(url, links, root, html_page)
         print(f'ending layer {layer}')
 
+#create_unique_urls_list()
 
-#initial_load_depth_one(urls_starting_points, limit=4)
-crawl_thread(depth=1, limit=1000)
+#create list of all urls
+# urls_starting_points = pickle.load(open("data/url_series.p","rb"))
+# urls_starting_points = urls_starting_points - bulk_check_url_already_seen()
+# urls_starting_points = list(urls_starting_points)
+# initial_load_threaded(urls_starting_points)
+'''
+urls in intial load 538302
+started with about 11000 in the initial load
+'''
+crawl_thread(depth=2)
+print(failed_urls)
+'''
 
+urls in layer 1: 697741
+
+'''
 '''
 sudo code for planning web link scraping:
     pull list of urls (starting points)
@@ -278,61 +368,3 @@ https://jeffknupp.com/blog/2012/03/31/pythons-hardest-problem/
 http://chriskiehl.com/article/parallelism-in-one-line/
 
 '''
-
-
-
-
-
-def create_unique_urls_list():
-    columns = ['DBM_URL']
-
-    activity_df = pd.read_csv('data/activity_dsi_april.csv', dtype=str, usecols=columns, squeeze=True, skip_blank_lines=True)
-    activity = activity_df.fillna('https://9gag.com/').unique()
-    click_df = pd.read_csv('data/click_dsi_april.csv', usecols=columns, dtype=str, squeeze=True, skip_blank_lines=True)
-    click = click_df.fillna('https://9gag.com/').unique()
-    imp0_df = pd.read_csv('data/impressions_dsi_april-000000000000.csv', usecols=columns, dtype=str, squeeze=True, skip_blank_lines=True)
-    imp0 = imp0_df.fillna('https://9gag.com/').unique()
-    imp1_df = pd.read_csv('data/impressions_dsi_april-000000000001.csv', usecols=columns, dtype=str, squeeze=True, skip_blank_lines=True)
-    imp1 = imp1_df.fillna('https://9gag.com/').unique()
-    imp2_df = pd.read_csv('data/impressions_dsi_april-000000000002.csv', usecols=columns, dtype=str, squeeze=True, skip_blank_lines=True)
-    imp2 = imp2_df.fillna('https://9gag.com/').unique()
-    imp3_df = pd.read_csv('data/impressions_dsi_april-000000000003.csv', usecols=columns, dtype=str, squeeze=True, skip_blank_lines=True)
-    imp3 = imp3_df.fillna('https://9gag.com/').unique()
-
-    urls_series = [activity, click, imp0, imp1, imp2, imp3]
-    pickle.dump(urls_series, open( "data/url_series.p", "wb" ) )
-
-def read_descriptions_simple():
-    urls_series = pickle.load( open( "data/url_series.p", "rb" ) )
-
-    urls = []
-    failed_urls = []
-    descriptions = []
-    for series in urls_series:
-        for url in series:
-            print(url)
-            try:
-                response = session.get(url)
-            except HTTPError as e:
-                print(e)
-                failed_urls.append(url)
-            except URLError:
-                print("Server down or incorrect domain")
-                failed_urls.append(url)
-            except: # catch *all* exceptions
-                e = sys.exc_info()[0]
-                print( "<p>Error: %s</p>" % e )
-                failed_urls.append(url)
-            else:
-                try:
-                    soup = BeautifulSoup(response.text, "lxml")
-                    metas = soup.find_all('meta')
-                    descriptions.append([ meta.attrs['content'] for meta in metas if 'name' in meta.attrs and meta.attrs['name'] == 'description' ])
-                    urls.append(url)
-                except: # catch *all* exceptions
-                    e = sys.exc_info()[0]
-                    print( "<p>Error: %s</p>" % e )
-                    failed_urls.append(url)
-    url_description_dict = dict(zip(urls, descriptions))
-    pickle.dump(url_description_dict, open( "data/url_desription_dict.p", "wb" ) )
-    print(failed_urls.append(url))
