@@ -15,7 +15,7 @@ product/service.
 
 [EDA Project](https://github.com/AmeliaMaier/Capstone_Machine_Learning_Apogee/blob/master/edaREADME.md)
 
-Using standard exploritory data analysis, see if I can find areas of high or low profitability that can be leveraged by Apogee. Time permitting, create reusable scripts with json config files so they can rerun the analysis on more data.
+Using standard exploritory data analysis, see if I can find areas of high or low profitability that can be leveraged by Apogee. Time permitting, create reusable scripts with json config files so they can rerun the analysis on more data. Information will only be available in this section is there is enough time to remove all proprietary information from the EDA done. 
 
 [Network Mapping Project](https://github.com/AmeliaMaier/Capstone_Machine_Learning_Apogee/blob/master/NetworkGraphingREADME.md)
 
