@@ -23,6 +23,17 @@ class ReadFromDB:
         conn.commit()
         return pd.DataFrame(data=result_list, columns=columns)
 
+    def query_for_df(self, query_str, columns):
+        cur.execute(query_str)
+        result_list = []
+        while True:
+            row = cur.fetchone()
+            if row == None:
+                break
+            result_list.append(list(row))
+        conn.commit()
+        return pd.DataFrame(data=result_list, columns=columns)
+
     def query_for_all_w_vars(self, query_str, var_dict):
         c.execute(query_str, var_dict)
         result = c.fetchall()
