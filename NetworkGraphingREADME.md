@@ -12,6 +12,9 @@ The analysis included in this project includes revenue and cost data. The exampl
 ### Objectives:
 
 + Analyze existing data to determine if the associative rule of graph theory holds true for this application.
+
+>>>Associative Rule: if person A knows person B and person C, person B and C are more likely to know each other than if they didn't know A. In this context, it means that if a user goes to multiple websites and we know that one of those websites is profitable, the other websites that person goes to are more likely to be profitable. Also, if a user goes to a website and that website has links, the person is more likely to be seen where the links lead than any randomly selected url. 
+
 + Create a web crawler that will perform a breadth first search for links on sites users have been seen at and map possible browsing routes from those starting points.
 + Create lists of likely profitable and unprofitable urls Apogee hasn’t advertised on before, at least in training set.
 + Compare predictions to full data set to see if how accurate they are.
