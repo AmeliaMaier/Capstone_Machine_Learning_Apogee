@@ -30,4 +30,4 @@ For security purposes, no data or data cleaning code will be included online unl
 
 ### Stack:
 
-<img src='images/networkGraphingStack.png'>
+<img src='images/aws.png'> <img src='images/beautifulsoup.png'> <img src='images/matplotlib.png'> <img src='images/pandas.png'> <img src='images/psql.png'> <img src='images/psycopg2.png'> <img src='images/python.png'> <img src='images/starfishgraphs.png'> <img src='images/sklearn.png'>
