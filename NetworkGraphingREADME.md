@@ -21,13 +21,49 @@ The analysis included in this project includes revenue and cost data. The exampl
 
 ### EDA and Feature Engineering:
 
-I feature engineered the direct and indirect profitability of each website users were seen at. Based on the high positive correlation between the direct and indirect measures, users who are seen at one profitable website are likely to go to other profitable websites.
+The raw dataset I started with had interaction logs. This means each row in the dataset represented one add being shown to one user on one website. Each users could have multiple rows of data. Each website could be on multiple rows for one or more users. Cost and revenue are known per interaction, so I am able to determine the general profitability of each interaction, user, website..ect. For more indepth information about this, see the [EDA Project](https://github.com/AmeliaMaier/Capstone_Machine_Learning_Apogee/blob/refactor/edaREADME.md).
 
-| URL                   |  URL ID  |  Direct Profit  |  Indirect Profit  |  Direct Sales  |  Indirect Sales  | Times Seen  |
+For this specific project, I feature engineered the direct and indirect profitability of each website users were seen at. I define direct profitability for a website to be the total revenue due to a conversion allocated to ad seen on that website minus the costs associated with that ad. An example of the aggregation is below:
+
+| URL  |  Revenue  |  Cost  |  Conversion  |
+| ---- | ---------:| ------ |:------:| 
+| A    |  1        | .01    |  1     | 
+| A    |  0        | .01    |  0     | 
+| A    | .5        | .02    |  1     |  
+
+| URL  |  Revenue  |  Cost  |  Direct Conversions  | Direct Profit  |  Times Seen | 
+| ---- | ---------:| ------ |:------:|:------:|:------:| 
+| A    |  1.5       | .03    |  2     | 1.47  |  3  |
+
+I define indirect profitability for a website to be the total revenue for all users who have been seen at that site at least once minus the total cost for those same users minus the direct profit for the url in question. I remove the direct profits so that all that is remained is the profit from other urls seen by the same users that view the questioned url.
+
+| User | URL | Revenue | Cost | Conversion |
+| ---- | ---- | ------:| ------ |:------:| 
+| 1   |  A    |  1     | .01   |  1       |
+| 1   |  B    |  1.5     | .05   |  1       |
+| 1   |  C    |  0     | .02   |  0       |
+| 2   | A    |  0        | .01    |  0     | 
+| 2   | A    | .5        | .02    |  1     |  
+| 3   | B    | .5        | .02    |  1     |  
+
+| User | Revenue | Cost | Conversion |
+| ---- | ------:| ------ |:------:| 
+| 1   |  2.5     | .08   |  2       |
+| 2   | .5        | .03    |  1     |  
+
+| URL  |  Direct Conversions  | Indirect Conversions | Direct Profit  | Indirect Profit |  Times Seen | 
+| ---- |:------:|:------:|:------:|:------:|:------:| 
+| A    |  2     |  1  | 1.47  |  1.42  |  3  |
+
+Here is an example of the actual direct to indirecct proportions seen in the data:
+
+| URL            |  URL ID  |  Direct Profit  |  Indirect Profit  |  Direct Conversion  |  Indirect Conversion  | Times Seen  |
 | --------------------- |:--------:| ---------------:| ----------------- |:--------------:| ----------------:| -----------:|
 | www.mail.yahoo.com/   |  1952    |  1              |  24.6             |    255         |  7996            |  125635     |
 | www.ebay.co.uk/       |  3747    |  .10            |  .40              |  9             |  111             |  6419       |
 | www.zillow.com/       | 496173   | -0.00225        |  -0.0225          |  0             |  21              |  1730       |
+
+Based on the high positive correlation between the direct and indirect measures, users who are seen at one profitable website are likely to go to other profitable websites and users who go one unprofitable website are likely to go to other unprofitable websites.
 
 <img src='images/url_profile_summary_corr_heatmap.png'>
 
