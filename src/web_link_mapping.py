@@ -16,6 +16,8 @@ import os
 from multiprocessing import Pool
 from multiprocessing.dummy import Pool as ThreadPool
 import logging
+import db_connection as conn
+import sql_statements
 
 psql_user = os.environ.get('PSQL_USER')
 psql_password = os.environ.get('PSQL_PASSWORD')
@@ -26,33 +28,6 @@ adapter = requests.adapters.HTTPAdapter(max_retries=MAX_RETRIES)
 session.mount('https://', adapter)
 session.mount('http://', adapter)
 failed_urls = []
-
-
-def create_unique_urls_list():
-    columns = ['DBM_URL']
-
-    activity_df = pd.read_csv('data/activity_dsi_april.csv', dtype=str, usecols=columns, squeeze=True, skip_blank_lines=True)
-    activity = activity_df.fillna('https://9gag.com/').unique()
-    activity = activity.tolist()
-    click_df = pd.read_csv('data/click_dsi_april.csv', usecols=columns, dtype=str, squeeze=True, skip_blank_lines=True)
-    click = click_df.fillna('https://9gag.com/').unique()
-    click = click.tolist()
-    imp0_df = pd.read_csv('data/impressions_dsi_april-000000000000.csv', usecols=columns, dtype=str, squeeze=True, skip_blank_lines=True)
-    imp0 = imp0_df.fillna('https://9gag.com/').unique()
-    imp0 = imp0.tolist()
-    imp1_df = pd.read_csv('data/impressions_dsi_april-000000000001.csv', usecols=columns, dtype=str, squeeze=True, skip_blank_lines=True)
-    imp1 = imp1_df.fillna('https://9gag.com/').unique()
-    imp1 = imp1.tolist()
-    imp2_df = pd.read_csv('data/impressions_dsi_april-000000000002.csv', usecols=columns, dtype=str, squeeze=True, skip_blank_lines=True)
-    imp2 = imp2_df.fillna('https://9gag.com/').unique()
-    imp2 = imp2.tolist()
-    imp3_df = pd.read_csv('data/impressions_dsi_april-000000000003.csv', usecols=columns, dtype=str, squeeze=True, skip_blank_lines=True)
-    imp3 = imp3_df.fillna('https://9gag.com/').unique()
-    imp3 = imp3.tolist()
-
-    urls_series = activity + click + imp0 + imp1 + imp2 + imp3
-    urls_series = set(urls_series)
-    pickle.dump(urls_series, open( "data/url_series.p", "wb" ) )
 
 
 def get_url_html(url):
@@ -118,53 +93,30 @@ def get_description(html_page):
     return desc[0]
 
 def check_url_already_seen(url):
-    conn = psycopg2.connect(dbname='website_link_mapping', user=psql_user, password=psql_password, host='localhost')
-    c = conn.cursor()
     match_count = 0
-    sql_statement = '''
-    SELECT COUNT(*) FROM urls
-        WHERE urls.url_raw = %(url_raw)s
-        AND urls.linked = %(linked)s;
-    '''
+    sql_statement = sql_statements.check_url_already_seen()
     var_dict = {'url_raw':url, 'linked': True}
-    c.execute(sql_statement, var_dict)
-    match_count = c.fetchall()
-    conn.commit()
-    conn.close()
+    db_conn = conn((psql_user, psql_password))
+    match_count = query_for_all_w_vars(query_str, var_dict)
     return (match_count[0][0] > 0)
 
 def bulk_check_url_already_seen():
     '''
     had to stop the initial load early, used this to cut down on the urls sent to threading
     '''
-    conn = psycopg2.connect(dbname='website_link_mapping', user=psql_user, password=psql_password, host='localhost')
-    c = conn.cursor()
     match_count = 0
-    sql_statement = '''
-    SELECT url_raw FROM urls
-        WHERE urls.linked = %(linked)s;
-    '''
+    sql_statement = sql_statements.bulk_check_url_already_seen()
     var_dict = {'linked': True}
-    c.execute(sql_statement, var_dict)
-    seen = c.fetchall()
+    db_conn = conn((psql_user, psql_password))
+    seen = query_for_all_w_vars(query_str, var_dict)
     seen = set([x[0] for x in seen])
-    conn.commit()
-    conn.close()
     return seen
 
 def write_to_tables(url, links, root, html_page):
-    # engine = create_engine(f'postgresql+psycopg2://{psql_user}:{psql_password}@localhost:5432/website_link_mapping',echo=False)
-    conn = psycopg2.connect(dbname='website_link_mapping', user=psql_user, password=psql_password, host='localhost')
-    c = conn.cursor()
 
     #add originating link html
-    sql_statement = '''
-    INSERT INTO urls (url_raw, site_description, html_raw, linked, root_url)
-        VALUES (%(url_raw)s, %(site_description)s, %(html_raw)s, %(linked)s, %(root_url)s)
-        ON CONFLICT (url_raw)
-        DO UPDATE SET (site_description, html_raw, linked, root_url)
-            =(EXCLUDED.site_description, EXCLUDED.html_raw, EXCLUDED.linked, EXCLUDED.root_url);
-    '''
+    sql_statement = sql_statements.update_urls_table_from()
+
     description = get_description(html_page)
 
     if root is None:
@@ -176,70 +128,18 @@ def write_to_tables(url, links, root, html_page):
 
     if (not links is None) and len(links) > 0:
     #    add links to urls
-        sql_statement += ' INSERT INTO urls (url_raw) VALUES '
-        link_vars = []
-        link_string_urls = ' '
-        for ind in range(len(links)):
-            if ind == 0:
-                link_string_urls += f'( %({"link" + str(ind)})s )'
-                link_vars.append(f'{"link" + str(ind)}')
-            else:
-                link_string_urls += f', ( %({"link" + str(ind)})s )'
-                link_vars.append(f'{"link" + str(ind)}')
-        var_dict.update(dict(zip(link_vars, links)))
-        sql_statement += link_string_urls
-        sql_statement += ' ON CONFLICT (url_raw) DO NOTHING; '
+        sql_temp, var_dict_addition = sql_statements.update_urls_table_tos(links)
+        sql_statement += sql_temp
+        var_dict.update(var_dict_addition)
 
-        #add links to website_links
-        sql_statement += ' INSERT INTO website_links (from_url_ID, to_url_ID) VALUES '
-        link_string_website_links = ' '
-        for ind in range(len(link_vars)):
-            if ind == 0:
-                link_string_website_links += '((SELECT url_ID FROM urls WHERE url_raw = %(url_raw)s), (SELECT url_ID FROM urls WHERE url_raw = '
-                link_string_website_links += f'%({link_vars[ind]})s))'
-            else:
-                link_string_website_links += ', ((SELECT url_ID FROM urls WHERE url_raw = %(url_raw)s), (SELECT url_ID FROM urls WHERE url_raw = '
-                link_string_website_links += f'%({link_vars[ind]})s))'
-        sql_statement += link_string_website_links
-        sql_statement += ' ON CONFLICT ON CONSTRAINT website_links_pkey DO NOTHING;'
-
-    try:
-        c.execute(sql_statement, var_dict)
-    except ValueError:
-        e = sys.exc_info()[0]
-        logging.warning( "<p>Error Writing to table: %s</p>" % e )
-        for k in var_dict:
-            if isinstance(var_dict[k], str) and '\x00' in var_dict[k]:
-                #needed because some descriptions, urls, or html have a '\x00' which psql thinks is null
-                var_dict[k] = 'not_available'
-        try:
-            c.execute(sql_statement, var_dict)
-        except:
-            e = sys.exc_info()[0]
-            logging.warning( "<p>Error Writing to table for url %s: %s</p>" % url, e )
-    except:
-        e = sys.exc_info()[0]
-        logging.warning( "<p>Error Writing to table for url %s: %s</p>" % url, e )
-    conn.commit()
-    conn.close()
+    db_conn = conn((psql_user, psql_password))
+    db_conn.insert_into_db_with_vars(var_dict, sql_statement)
 
 def get_url_layer():
-    conn = psycopg2.connect(dbname='website_link_mapping', user=psql_user, password=psql_password, host='localhost')
-    c = conn.cursor()
-
-    sql_statement = '''
-    SELECT urls.url_raw FROM urls
-        LEFT JOIN website_links
-            ON urls.url_ID = website_links.from_url_ID
-        WHERE NOT urls.linked
-        AND website_links.from_url_ID is NULL;
-    '''
-
-    c.execute(sql_statement)
-    links = c.fetchall()
+    sql_statement = sql_statments.get_url_layer()
+    db_conn = conn((psql_user, psql_password))
+    links = db_conn.query_for_all(sql_statement)
     links = [link[0] for link in links]
-    conn.commit()
-    conn.close()
     return links
 
 def initial_load_depth_one(urls_starting_points, limit=None):
@@ -325,6 +225,7 @@ def crawl(depth=5, limit=None):
             write_to_tables(url, links, root, html_page)
         print(f'ending layer {layer}')
 
+if __name__ = '__main__':
 #create_unique_urls_list()
 
 #create list of all urls
