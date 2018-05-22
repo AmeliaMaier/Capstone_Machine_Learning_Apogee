@@ -5,10 +5,6 @@
 
 The analysis included in this project includes revenue and cost data. The examples given are examples and not the true values. They have been created to show the same relationships as the true data.
 
-### Stack:
-
-<img src='images/networkGraphingStack.png'>
-
 ### Objectives:
 
 + Analyze existing data to determine if the associative rule of graph theory holds true for this application.
