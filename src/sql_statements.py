@@ -58,3 +58,42 @@ def get_url_layer():
                 WHERE NOT urls.linked
                 AND website_links.from_url_ID is NULL;
             '''
+
+def all_nodes():
+    return 'SELECT url_ID, url_raw from urls ORDER BY url_ID;'
+
+def all_edges():
+    return 'SELECT from_url_ID, to_url_ID from website_links;'
+
+def starting_points():
+    return '''
+        SELECT DISTINCT(from_url_ID) FROM website_links
+    '''
+
+def create_limited_links_temp():
+    #number of rows limits bredth of subgraph levels
+    return '''
+        DROP TABLE IF EXISTS limited_links;
+        CREATE TABLE IF NOT EXISTS limited_links AS
+        SELECT from_url_ID, to_url_ID	FROM (
+        	SELECT ROW_NUMBER() OVER(PARTITION BY from_url_ID) AS row, website_links.* FROM	website_links) AS temp_grouping
+        WHERE temp_grouping.row <= 25;
+    '''
+
+def recursive_subgraphs():
+    #depth limit limits the depth of the subgraphs
+    return '''
+        WITH RECURSIVE first_level_elements AS (
+        		(
+        		SELECT from_url_ID, to_url_ID, array[from_url_ID] AS link_path, 0 depth_limit FROM limited_links
+        			WHERE from_url_ID = %(starting_point)s
+        		)
+        		UNION
+        			SELECT nle.from_url_ID, nle.to_url_ID, (fle.link_path || nle.from_url_ID), fle.depth_limit+1 FROM first_level_elements as fle
+        				JOIN limited_links as nle
+        					ON fle.to_url_ID = nle.from_url_ID
+        			WHERE NOT (nle.from_url_ID = any(link_path))
+        				AND fle.depth_limit < 20
+        	)
+        	SELECT from_url_ID, to_url_ID, (link_path || to_url_ID)as link_path, depth_limit  from first_level_elements;
+    '''
