@@ -1,7 +1,5 @@
 
-<img src="images/Apogee.png">
-
->[Apogee Digital Media Partners](https://www.apogeedigital.media) was conceived of by a passionate group of ad tech professionals determined to create a new programmatic advertising dogma. With over 20 years of combined experience spanning both sides of the ad tech ecosystem, we have recognized the need for an alternative to the bloated, black-box programmatic solutions available in the market today.
+## Clustering on Page Category   <img src="images/clustering.png">
 
 ### Project Summary:
 
