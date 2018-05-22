@@ -1,10 +1,6 @@
 
 ## Clustering on Page Category   <img src="images/clustering.png">
 
-### Project Summary:
-
-I worked with Apogee on a dataset for one client over one month. The general goal was to see if I could come up with any rules they could add to their business logic to improve the conversion rate of users. (a conversion being a sale or account creation, a user being a member of the public that saw the client's ad) I worked with the team at Apogee to narrow down the scope to a specific hypothesis listed below. For security purposes, no data or data cleaning code will be included online. Throughout the project, I tried to stick with techniques that are interpretable and scalable so I would be able to translate my results to new business rules and test against their full dataset, if applicable.
-
 ### Hypothesis:
 
 Our hypothesis is that content browsed by individual users provides indication of intent for our client's
