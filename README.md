@@ -26,3 +26,8 @@ perform a breadth first search for links on sites users have been seen at and ma
 ### Proprietary Information Concerns:
 
 For security purposes, no data or data cleaning code will be included online unless all propriety information has been removed from it. This includes, but is not limited to: column names, user ids, actual costs or revenue. 
+
+
+### Stack:
+
+<img src='images/networkGraphingStack.png'>
