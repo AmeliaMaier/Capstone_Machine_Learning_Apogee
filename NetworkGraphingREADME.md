@@ -67,10 +67,40 @@ Based on the high positive correlation between the direct and indirect measures,
 
 <img src='images/url_profile_summary_corr_heatmap.png'>
 
-### Webcraler Network Graphs:
+### Webcraler:
 
+I used beautiful soup to parse the html of the websites users were seen on in order to pull out the sites directly linked from there. Currently, the webcrawler is able to try up to 20 times on a website, with a wait between each attempt. If it does not recieve html from the site, it moves on to the next site on its list. If a website does not have any links, it moves on to the next site on the list. All urls at one depth will be checked before the webcralwer moves on to find links on the urls it found in the last round of scraping. Because requesting the html from a website is slow and an OS based operation, I set up multi-threading to allow up to 50 sites to be requested and pending response at a time. Future versions of the webcrawler would be more valuable if the ablity to find links in javascript/comments/ect was added.
+
+I created a Postgres database to hold the url details (including url root and raw html incase changes to the evaluation in the future require parsing or subseting the data in a different way). Each thread was set to write its results to the database at the end of its parsing process. This is safe in python because the GlobalInterpreterLock insurse that only one thread is interacting with the database at a time.
+
+Here is the structure of the database and tables I created:
+
+```sql
+
+CREATE DATABASE website_link_mapping;
+CREATE TABLE urls (
+url_ID SERIAL PRIMARY KEY,
+url_raw VARCHAR UNIQUE NOT NULL,
+root_url VARCHAR DEFAULT 'not_available',
+site_description VARCHAR DEFAULT 'not_available',
+date_scraped TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+html_raw VARCHAR,
+linked BOOLEAN DEFAULT False
+);
+CREATE TABLE website_links (
+from_url_ID INTEGER NOT NULL REFERENCES urls(url_id),
+to_url_ID INTEGER NOT NULL REFERENCES urls(url_id),
+PRIMARY KEY (from_url_ID, to_url_ID)
+);
+
+```
 The web-crawler was given 11,000 starting points and was stopped when the database contained about 4 million nodes with about
-14 million edges. I broke the data into sub-graphs, finding paths that spread out from the starting points. Below is the graph starting at 1952. It links to 18 other starting points which were all either profitable or seen very few times and just below profitable.
+14 million edges. This allowed it to get a depth of 4 for most starting points. 
+
+
+### Network Graphs:
+
+Due to the size of the data involved, I was not able to graph the full dataset in a useful way. I used a recursive sql query to brake the data into sub-graphs, finding paths that spread out from the starting points. Below is the graph starting at 1952 (yahoo mail). It links to 18 other starting points which were all either profitable or seen very few times and just below profitable (suggesting they would be profitable if they were advertised on more often).
 
 
 <img src='images/starting_point_1952.png'>
@@ -79,6 +109,10 @@ Below is the graph starting at 3747. It is an example of a profitable url that t
 another known url.
 
 <img src='images/starting_point_3747.png'>
+
+In both cases shown, the webcrawler primary found links within one root group. For example: ebay mostly links ebay. In both these examples though, the webcrawler did link to at least one url outside the primary root, suggesting that it would branch to associated roots if given enough time. 
+
+A list of sites to avoid and to focus on has been provided to Apogee and is being compared to the client’s full history.
 
 ### Conclusion:
 
@@ -91,4 +125,4 @@ of websites that haven’t been seen in the past and are potentially new locatio
 
 Due to the interconnectedness of root websites (ebay leads to more ebay sites), it would be useful to allow the webcrawler to run for a longer time, creating deeper graphs with more chances to step outside the root website it started in.
 
-A list of sites to avoid and to focus on has been provided to Apogee and is being compared to the client’s full history.
+Currently, I have not automated any logic for curating the list of urls suggested from the webcrawler process. This would likely be an indepth Analysis and NLP process: assessing if tech suport pages should or shouldn't be included, including knowledge gained from the EDA Project to determine if other country's versions of the website are worth including, comparing site descriptions to assist in valueing each url.
