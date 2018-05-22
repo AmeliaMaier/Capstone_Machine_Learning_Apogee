@@ -78,7 +78,7 @@ I ran a RandomForestClassifier model with the vectorized categories per person a
 
 <img src="images/RandomForestClass_Recall_70-30.png">
 
-While the models are better than random guessing, the addition of the clusters does not help and the model's ability to predict purchases on entirly unseen data is not much better than a guess.
+While the models are better than random guessing (on data they have seen before), the addition of the clusters does not help and the model's ability to predict purchases on entirly unseen data has a recall score that is worse than a guess.
 
 ### Results:
 
