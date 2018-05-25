@@ -66,6 +66,11 @@ def guess_root(links):
             netloc = parsed_link.netloc
             return scheme + netloc
 
+def fill_missing_roots():
+    missing_roots = pd.read_csv('data/nodes.csv')
+    missing_roots['root_url'] = guess_root(missing_roots['url_raw'])
+    missing_roots.to_csv('data/nodes.csv')
+
 def resolve_links(links):
     ''' original found from a stacked overflow page
     https://stackoverflow.com/questions/1080411/retrieve-links-from-web-page-using-python-and-beautifulsoup'''
@@ -225,7 +230,11 @@ def crawl(depth=5, limit=None):
             write_to_tables(url, links, root, html_page)
         print(f'ending layer {layer}')
 
-if __name__ = '__main__':
+if __name__ == '__main__':
+
+    fill_missing_roots()
+
+
 #create_unique_urls_list()
 
 #create list of all urls
@@ -237,8 +246,8 @@ if __name__ = '__main__':
 urls in intial load 538302
 started with about 11000 in the initial load
 '''
-crawl_thread(depth=2)
-print(failed_urls)
+# crawl_thread(depth=2)
+# print(failed_urls)
 '''
 
 urls in layer 1: 697741

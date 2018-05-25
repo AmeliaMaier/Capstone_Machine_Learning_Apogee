@@ -1,0 +1,6 @@
+{
+  "sccp":false,
+  "single_column_cat_profitability_config_files":["src/config/single_column_cat_profitablity_config1.json", "src/config/single_column_cat_profitablity_config2.json", "src/config/single_column_cat_profitablity_config3.json"],
+  "cpc":true,
+  "create_pairplot_config_files":["src/config/create_pairplot_config.json"]
+}

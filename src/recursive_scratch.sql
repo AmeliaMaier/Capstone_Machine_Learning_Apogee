@@ -1,4 +1,4 @@
-
+-- change notes: don't add froms that have more than 25 tos
 
 CREATE TEMP TABLE limited_links AS
 SELECT from_url_ID, to_url_ID	FROM (
@@ -18,6 +18,10 @@ WITH RECURSIVE first_level_elements AS (
 				AND fle.depth_limit < 2
 	)
 	SELECT from_url_ID, to_url_ID, (link_path || to_url_ID)as link_path, depth_limit  from first_level_elements;
+
+
+
+
 
 
 

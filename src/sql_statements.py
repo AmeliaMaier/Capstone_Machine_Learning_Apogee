@@ -8,6 +8,8 @@ def update_urls_table_from():
                     =(EXCLUDED.site_description, EXCLUDED.html_raw, EXCLUDED.linked, EXCLUDED.root_url);
             '''
 
+
+
 def update_urls_table_tos(links):
     sql_statement = ' INSERT INTO urls (url_raw) VALUES '
     link_vars = []

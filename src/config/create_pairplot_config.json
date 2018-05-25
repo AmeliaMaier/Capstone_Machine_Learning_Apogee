@@ -1,0 +1,9 @@
+{
+  "data_file_path":"sample_data/profit_per_user-speed.csv",
+  "image_file_location":"sample_data/profit_per_user-speed_pairplot.png",
+  "multiple_files":false,
+  "multiple_file_paths":null,
+  "limit_columns":false,
+  "columns_to_use":null,
+  "multiple_columns_to_use":null
+}

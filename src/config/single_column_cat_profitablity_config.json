@@ -1,0 +1,15 @@
+{
+    "data_file_path":"sample_data/sample.csv",
+    "user_id_col_name":"user",
+    "conversion_yes_no_col_name":"conversion",
+    "categorical_col_name":"browser",
+    "revenue_col_name":"revenue",
+    "cost_col_name":"cost",
+    "category_name":"browser",
+    "profit_per_cat":true,
+    "profit_per_cat_file":"sample_data/profit_per_browser" ,
+    "profit_per_user":true,
+    "profit_per_user_file":"sample_data/profit_per_user" ,
+    "profit_per_interaction":true,
+    "profit_per_interaction_file":"sample_data/profit_per_interaction"
+}
